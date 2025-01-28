@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Login to Chat Assistant">
+    <meta name="author" content="Greenstorm5417">
+    <title>Login - Chat Assistant</title>
+    <link rel="stylesheet" href="/css/login.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <script src="/js/login.js"></script>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h2 class="welcome-header">Welcome to Chat Assistant</h2>
+        </div>
+        <div id="message-container"></div> <!-- Container for messages and errors -->
+        <form action="/login" method="POST" class="login-form">
+            <div class="form-group">
+                <label for="first_name">First Name:</label>
+                <input type="text" id="first_name" name="first_name" required placeholder="Enter your first name">
+            </div>
+            <button type="submit" class="button">Login</button>
+        </form>
+    </div>    
+</body>
+</html>

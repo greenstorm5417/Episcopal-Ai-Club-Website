@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /assistant/send
+Disallow: /assistant/delete_message
+Disallow: /assistant/try_again
+Disallow: /assistant/edit_message
+Disallow: /assistant/stop_response
+Disallow: /assistant/settings
+Disallow: /login
+Disallow: /logout
+Disallow: /health
+Allow: /
+
+Sitemap: https://greenstorm.site/sitemap.xml

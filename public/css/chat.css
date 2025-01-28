@@ -1,0 +1,735 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    background-color: #343541;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.chat-container {
+    background-color: #343541;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #2E3138;
+    border-bottom: 1px solid #555555;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    color: #0077B6;
+}
+
+#logout {
+    background-color: #0077B6;
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    margin-top: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#logout:hover {
+    background-color: #0090c1;
+    transform: translateY(-2px);
+}
+
+#logout:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.5);
+}
+
+main#chat-window {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    background-color: #343541;
+    display: flex;
+    flex-direction: column;
+}
+
+main#chat-window::-webkit-scrollbar {
+    width: 8px;
+}
+
+main#chat-window::-webkit-scrollbar-track {
+    background: #343541;
+}
+
+main#chat-window::-webkit-scrollbar-thumb {
+    background-color: #555555;
+    border-radius: 4px;
+}
+
+main#chat-window::-webkit-scrollbar-thumb:hover {
+    background-color: #777777;
+}
+
+main#chat-window {
+    scrollbar-width: thin;
+    scrollbar-color: #555555 #343541;
+}
+
+.message {
+    display: flex;
+    margin-bottom: 0.5rem;
+    flex-direction: column;
+}
+
+.message.user {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+}
+
+.message.assistant {
+    align-items: flex-start; 
+    justify-content: flex-start;
+}
+
+.message.error {
+    justify-content: center;
+    color: #ff6b6b;
+}
+
+.message.system {
+    justify-content: center;
+    color: #ffffff;
+}
+
+.message-content {
+    max-width: 70%;
+    padding: 0.75rem 1rem;
+    border-radius: 20px;
+    position: relative;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 1rem;
+    line-height: 1.4;
+    margin-bottom: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.message.user .message-content {
+    background-color: #0077B6;
+    color: #ffffff;
+    border-bottom-right-radius: 0;
+    text-align: left;
+    margin-bottom: 0;
+}
+
+.message.assistant .message-content {
+    background-color: #2E3138;
+    color: #ffffff;
+    border-bottom-left-radius: 0;
+    text-align: left;
+    margin-bottom: 0;
+}
+
+.message.error .message-content {
+    background-color: transparent;
+    color: #ff6b6b;
+    font-style: italic;
+}
+
+.message.system .message-content {
+    background-color: #555555;
+    color: #ffffff;
+    border-radius: 15px;
+    font-style: italic;
+    margin-bottom: 0;
+}
+
+form#message-form {
+    display: flex;
+    padding: 1rem;
+    background-color: #2E3138;
+    border-top: 1px solid #555555;
+    justify-content: center;
+}
+
+.input-wrapper {
+    position: relative;
+    width: 80%;
+    margin: 0 auto;
+}
+
+.input-wrapper textarea {
+    width: 100%;
+    resize: none;
+    background-color: #555555;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    min-height: 40px;
+    max-height: 120px;
+    overflow-y: hidden;
+    transition: height 0.2s ease, overflow-y 0.2s ease;
+    padding-right: 3rem;
+    box-sizing: border-box;
+}
+
+.input-wrapper textarea::placeholder {
+    color: #a9a9a9;
+}
+
+.input-wrapper textarea:focus {
+    outline: none;
+}
+
+.submit-button {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.submit-button svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s ease;
+}
+
+.submit-button:hover svg {
+    transform: translateY(-2px);
+}
+
+.submit-button:focus {
+    outline: none;
+}
+
+.try-again-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    text-align: left;
+}
+
+.try-again-button {
+    position: relative;
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.try-again-button svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s ease, fill 0.2s ease;
+}
+
+.try-again-button:hover svg {
+    transform: translateY(-2px);
+}
+
+.try-again-button:focus {
+    outline: none;
+}
+
+.delete-message-button {
+    position: relative;
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.delete-message-button svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s ease, fill 0.2s ease;
+    fill: #ffffff;
+}
+
+.delete-message-button:hover svg {
+    transform: translateY(-2px);
+    fill: #ff6b6b;
+}
+
+.delete-message-button:focus {
+    outline: none;
+}
+
+.copy-message-button {
+    position: relative;
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.copy-message-button svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s ease, fill 0.2s ease;
+}
+
+.copy-message-button:hover svg {
+    transform: translateY(-2px);
+}
+
+.copy-message-button:focus {
+    outline: none;
+}
+
+.edit-message-button {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, color 0.2s ease;
+    margin-right: 0.5rem;
+}
+
+.edit-message-button svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s ease, fill 0.2s ease;
+}
+
+.edit-message-button:hover svg {
+    transform: translateY(-2px);
+}
+
+.edit-message-button:focus {
+    outline: none;
+}
+
+.message.user:hover .edit-message-button {
+    display: flex;
+}
+
+.message.user.editing .message-content {
+    width: 80%; 
+    max-width: 80%;
+    background-color: #0077B6;
+    position: relative;
+    margin-bottom: 2.5rem;
+    transition: width 0.3s ease-in-out;
+}
+
+.edit-controls {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 1rem;
+}
+
+.edit-textarea {
+    width: 100%;
+    height: auto;
+    resize: none;
+    background-color: #008bbf;
+    color: #ffffff;
+    border: none;
+    border-radius: 15px;
+    padding: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    box-sizing: border-box;
+    outline: none;
+    min-height: 6rem;
+    max-height: 12rem;
+    overflow-y: auto;
+    margin-bottom: 2.5rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.edit-controls button {
+    background: none;
+    border: 1px solid #ffffff;
+    color: #ffffff;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.edit-controls button:hover {
+    background-color: #ffffff;
+    color: #0077B6;
+}
+
+.edit-controls button:focus {
+    outline: none;
+}
+
+.spinner {
+    border: 4px solid rgba(255,255,255,0.1);
+    border-left-color: #ffffff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.button {
+    background-color: #0077B6;
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.button:hover {
+    background-color: #0090c1;
+    transform: translateY(-2px);
+}
+
+.button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.5);
+}
+
+button[title] {
+    position: relative;
+}
+
+button[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #2E3138;
+    color: #ffffff;
+    padding: 0.5rem;
+    border-radius: 5px;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+button[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 115%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #2E3138 transparent;
+    z-index: 10;
+}
+
+#status-banner {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #2E3138;
+    color: #ffffff;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 1000;
+}
+
+#status-banner.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(10px);
+}
+
+.hidden {
+    display: none;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+    color: #0077B6;
+    margin-bottom: 0.5rem;
+}
+
+.message-content a {
+    color: #0077B6;
+    text-decoration: none;
+}
+
+.message-content a:hover {
+    text-decoration: underline;
+}
+
+.message-content pre {
+    background-color: #555555;
+    padding: 0.75rem;
+    border-radius: 5px;
+    overflow-x: auto;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.message-content code {
+    background-color: #666666;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.message-content blockquote {
+    border-left: 4px solid #0077B6;
+    padding-left: 1rem;
+    color: #a9a9a9;
+    margin: 1rem 0;
+}
+
+.message-content ul,
+.message-content ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.message-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+    margin: 1rem 0;
+}
+
+.message-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.message-content th,
+.message-content td {
+    border: 1px solid #666666;
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.message-content th {
+    background-color: #0077B6;
+    color: #ffffff;
+}
+
+@media (max-width: 600px) {
+    .input-wrapper textarea {
+        height: 35px;
+        padding-right: 3rem;
+    }
+
+    header h1 {
+        font-size: 1.2rem;
+    }
+
+    #logout {
+        width: 100%;
+        padding: 0.75rem;
+        font-size: 1.1rem;
+    }
+}
+
+.cursor {
+    display: inline;
+    color: #ffffff;
+    animation: blink 1s infinite;
+    font-weight: bold;
+    margin-left: 1px;
+    user-select: none;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 1; }
+}
+
+
+.header-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Settings Button */
+#settings-button {
+    background-color: #0077B6;
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#settings-button:hover {
+    background-color: #0090c1;
+    transform: translateY(-2px);
+}
+
+#settings-button[title]:hover::after {
+    top: 125%;
+    left: 50%;
+    bottom: auto;
+
+}
+
+#settings-button[title]:hover::before {
+    top: 115%;
+    left: 50%;
+    bottom: auto;
+
+}
+
+#settings-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.5);
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001; /* Above other elements */
+}
+
+.modal-content {
+    background-color: #2E3138;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    color: #ffffff;
+}
+
+.close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.close-button:hover {
+    color: #ff6b6b;
+}
+
+.modal-content h2 {
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #0077B6;
+}
+
+.modal-content .form-group {
+    margin-bottom: 1rem;
+}
+
+.modal-content .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.modal-content .form-group input {
+    width: 100%;
+    padding: 0.5rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.modal-content .form-group input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 180, 216, 0.5);
+}
+
+.modal.hidden {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .modal-content {
+        padding: 1.5rem;
+    }
+
+    .modal-content h2 {
+        font-size: 1.25rem;
+    }
+}

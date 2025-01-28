@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Existing head content -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Chat with Assistant">
+    <meta name="author" content="Greenstorm5417">
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>Chat with Assistant</title>
+    <link rel="stylesheet" href="/css/chat.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js" crossorigin="anonymous" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.3/purify.min.js" crossorigin="anonymous" defer></script>
+</head>
+<body>
+    <div class="chat-container">
+        <header>
+            <h1>Chat with your Assistant</h1>
+            <div class="header-buttons">
+                <!-- Settings Button -->
+                <button id="settings-button" title="Settings">
+                    <!-- Gear Icon SVG -->
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 15.5C13.933 15.5 15.5 13.933 15.5 12C15.5 10.067 13.933 8.5 12 8.5C10.067 8.5 8.5 10.067 8.5 12C8.5 13.933 10.067 15.5 12 15.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <!-- Logout Button -->
+                <button id="logout" data-logout-url="/logout">Logout</button>
+            </div>
+        </header>
+
+        <div id="status-banner" class="hidden"></div>
+        <main id="chat-window" role="main">
+            <div id="messages"></div>
+        </main>
+
+        <form id="message-form" data-send-url="/assistant/send">
+            <div class="input-wrapper">
+                <textarea id="message" placeholder="Type your message..." rows="1" maxlength="1000"></textarea>
+                <button type="submit" class="submit-button" aria-label="Send Message">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 12L20 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M16 8L20 12L16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+        </form>        
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <h2>Settings</h2>
+                <p>Don't know what do to? Click <a href="/schedule_tutorial" target="_blank">Here</a></p>
+                <br>
+                <form id="settings-form">
+                    <div class="form-group">
+                        <label for="setting1">All Classes:</label>
+                        <input type="text" id="class-schedules" name="class-schedules" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="setting2">All Assignments:</label>
+                        <input type="text" id="all-assignments" name="all-assignments" required>
+                    </div>
+                    <button type="submit" class="button">Submit</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+    <script src="js/chat.js" defer></script>
+</body>
+</html>
