@@ -2,6 +2,8 @@
 coppy.pyt
 database/database.sqlite
 helpers/cache/*
+ecosystem.config.js
+run_keydb.bat
 
 # Logs
 logs

@@ -9,14 +9,17 @@ if (!fs.existsSync(logDirectory)) {
     fs.mkdirSync(logDirectory, { recursive: true });
 }
 
+const customFormat = format.combine(
+    format.label({ label: `Worker ${process.pid}` }),
+    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    format.errors({ stack: true }),
+    format.splat(),
+    format.json()
+);
+
 const logger = createLogger({
-    level: 'debug',
-    format: format.combine(
-        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        format.errors({ stack: true }), 
-        format.splat(),
-        format.json()
-    ),
+    level: 'debug', 
+    format: customFormat, 
     defaultMeta: { service: 'ai-club-website' },
     transports: [
         new DailyRotateFile({
@@ -27,7 +30,6 @@ const logger = createLogger({
             maxFiles: '14d',
             level: 'error',
         }),
-        
         new DailyRotateFile({
             filename: path.join(logDirectory, 'combined-%DATE%.log'),
             datePattern: 'YYYY-MM-DD',
@@ -38,12 +40,14 @@ const logger = createLogger({
     ],
 });
 
-// If we're not in production, log to the console
-if (false) {
+
+if (process.env.NODE_ENV !== 'production') {
     logger.add(new transports.Console({
         format: format.combine(
             format.colorize(),
-            format.simple()
+            format.printf(({ timestamp, level, message, label, stack }) => {
+                return `${timestamp} [${label}] ${level}: ${stack || message}`;
+            })
         )
     }));
 }
