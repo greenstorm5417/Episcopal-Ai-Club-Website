@@ -1,0 +1,1 @@
+im to lazy to make an actual read me 
