@@ -14,7 +14,7 @@ const logger = require('../config/logger');
 const redisClient = require('../config/keydb');
 const db = require('../config/db');
 
-const assistant_id_full = "asst_naYoKRE7PEfiQRDpK9o84nYH";
+const assistant_id_full = "asst_asKQhGZx0c5pKqFQSltw1iu3";
 
 router.get('/login', (req, res) => 
     res.sendFile(path.join(__dirname, '..', 'public', 'html', 'login.html'))
@@ -122,8 +122,8 @@ router.get('/history', isAuthenticated, async (req, res, next) => {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const messages = (await openai.beta.threads.messages.list(user.thread_id, { limit: 50, order: "asc" })).data;
-
+        const messages = (await openai.beta.threads.messages.list(user.thread_id, { limit: 50 })).data;
+        messages.reverse();
         res.json({ 
             history: messages.map(m => ({ 
                 role: m.role, 

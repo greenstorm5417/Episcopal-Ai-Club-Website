@@ -82,6 +82,39 @@ const tools = [
         required: []
       }
     }
+  },{
+    type: "function",
+    function: {
+      name: "search_web",
+      description: "search the web for information on a specific topic",
+      parameters: {
+        type: "object",
+        properties: {
+          search_term: {
+            type: "string",
+            description: "the topic you want to search for",
+          },
+        },
+        required: ["search_term"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "scrape_web",
+      description: "scrape a website for its content",
+      parameters: {
+        type: "object",
+        properties: {
+          crawl_url: {
+            type: "string",
+            description: "the URL of the website you want to scrape, up to 5 urls at one time",
+          },
+        },
+        required: ["crawl_url"],
+      },
+    },
   },
 ];
 
