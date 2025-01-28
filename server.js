@@ -29,18 +29,6 @@ process.on('uncaughtException', (error) => {
 
 const app = express();
 
-const HTTP_PORT = 80;
-const HTTPS_PORT = 443;
-
-
-const certPath = 'C:/Certbot/live/greenstorm.site/'; 
-const sslOptions = {
-    key: fs.readFileSync(path.join(certPath, 'privkey.pem')),
-    cert: fs.readFileSync(path.join(certPath, 'fullchain.pem')),
-    // ca: fs.readFileSync(path.join(certPath, 'chain.pem')), // Uncomment if necessary
-};
-
-
 const logDirectory = path.join(__dirname, 'logs');
 if (!fs.existsSync(logDirectory)) {
     fs.mkdirSync(logDirectory);
@@ -54,10 +42,10 @@ app.use(session({
     saveUninitialized: false,
     store: new RedisStore({ client: keydbClient }),
     cookie: {
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
         sameSite: 'lax',
-        maxAge: 1000 * 60 * 60 * 24, // 1 day
+        maxAge: 1000 * 60 * 60 * 24,
     },
 }));
 
@@ -71,14 +59,14 @@ app.use(helmet({
         },
     },
     hsts: {
-        maxAge: 31536000, // 1 year
+        maxAge: 31536000,
         includeSubDomains: true,
         preload: true
     },
 }));
 
 const limiter = rateLimit({
-    windowMs: 5 * 60 * 1000, // 5 min
+    windowMs: 5 * 60 * 1000,
     max: 100,
     message: 'Too many requests from this IP, please try again after 5 minutes',
 });
@@ -96,7 +84,6 @@ app.use(compression({
 }));
 
 app.set('trust proxy', 1); 
-
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -119,52 +106,59 @@ app.use((err, req, res, next) => {
     }
 });
 
-const httpsServer = https.createServer(sslOptions, app);
-
-httpsServer.listen(HTTPS_PORT,'0.0.0.0', () => {
-    logger.info(`HTTPS Server running on https://0.0.0.0:${HTTPS_PORT}`);
-});
-
-const httpApp = express();
-
-httpApp.use((req, res, next) => {
-    const host = req.headers.host.split(':')[0];
-    res.redirect(`https://${host}${req.url}`);
-});
-
-const httpServer = http.createServer(httpApp);
-
-httpServer.listen(HTTP_PORT,'0.0.0.0', () => {
-    logger.info(`HTTP Server running on http://0.0.0.0:${HTTP_PORT} and redirecting to HTTPS`);
-});
+if (process.env.NODE_ENV === 'production') {
+    const HTTPS_PORT = 443;
+    const certPath = 'C:/Certbot/live/greenstorm.site/';
+    const sslOptions = {
+        key: fs.readFileSync(path.join(certPath, 'privkey.pem')),
+        cert: fs.readFileSync(path.join(certPath, 'fullchain.pem')),
+    };
+    const httpsServer = https.createServer(sslOptions, app);
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+        logger.info(`HTTPS Server running on https://0.0.0.0:${HTTPS_PORT}`);
+    });
+} else {
+    const HTTP_PORT = 80;
+    const httpApp = express();
+    httpApp.use((req, res, next) => {
+        const host = req.headers.host.split(':')[0];
+        res.redirect(`https://${host}${req.url}`);
+    });
+    const httpServer = http.createServer(httpApp);
+    httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
+        logger.info(`HTTP Server running on http://0.0.0.0:${HTTP_PORT} and redirecting to HTTPS`);
+    });
+}
 
 const shutdown = async () => {
     logger.info('Received kill signal, shutting down gracefully.');
 
     try {
-        await new Promise((resolve, reject) => {
-            httpsServer.close((err) => {
-                if (err) {
-                    logger.warning('Error closing HTTPS server:', { message: err.message, stack: err.stack });
-                    reject(err);
-                } else {
-                    logger.info('HTTPS server closed successfully.');
-                    resolve();
-                }
+        if (process.env.NODE_ENV === 'production') {
+            await new Promise((resolve, reject) => {
+                httpsServer.close((err) => {
+                    if (err) {
+                        logger.warning('Error closing HTTPS server:', { message: err.message, stack: err.stack });
+                        reject(err);
+                    } else {
+                        logger.info('HTTPS server closed successfully.');
+                        resolve();
+                    }
+                });
             });
-        });
-
-        await new Promise((resolve, reject) => {
-            httpServer.close((err) => {
-                if (err) {
-                    logger.warning('Error closing HTTP server:', { message: err.message, stack: err.stack });
-                    reject(err);
-                } else {
-                    logger.info('HTTP server closed successfully.');
-                    resolve();
-                }
+        } else {
+            await new Promise((resolve, reject) => {
+                httpServer.close((err) => {
+                    if (err) {
+                        logger.warning('Error closing HTTP server:', { message: err.message, stack: err.stack });
+                        reject(err);
+                    } else {
+                        logger.info('HTTP server closed successfully.');
+                        resolve();
+                    }
+                });
             });
-        });
+        }
 
         await keydbClient.quit();
         logger.info('Redis client closed successfully.');
