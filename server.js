@@ -97,7 +97,7 @@ app.get('/', (req, res) => {
     res.redirect(redirectTo);
 });
 
-app.use((err, req, res) => {
+app.use((err, req, res, next) => { // Added 'next' to correctly define the error-handling middleware
     logger.error('Unhandled error in Express route:', { message: err.message, stack: err.stack });
     if (process.env.NODE_ENV === 'production') {
         res.status(500).send('Something went wrong! Please try again later.');
@@ -106,38 +106,43 @@ app.use((err, req, res) => {
     }
 });
 
-let httpsServer;
-let httpServer;
+let mainServer; // To hold the main server instance
 
 if (process.env.NODE_ENV === 'production') {
-    const HTTPS_PORT = 443;
+    const HTTPS_PORT = process.env.HTTPS_PORT || 443;
+    const HTTP_PORT = process.env.HTTP_PORT || 80;
     const certPath = 'C:/Certbot/live/greenstorm.site/';
+
+    if (!fs.existsSync(path.join(certPath, 'privkey.pem')) || !fs.existsSync(path.join(certPath, 'fullchain.pem'))) {
+        logger.error('SSL certificate files not found. Please check the certPath.');
+        process.exit(1);
+    }
+
     const sslOptions = {
         key: fs.readFileSync(path.join(certPath, 'privkey.pem')),
         cert: fs.readFileSync(path.join(certPath, 'fullchain.pem')),
     };
-    httpsServer = https.createServer(sslOptions, app);
+
+    const httpsServer = https.createServer(sslOptions, app);
     httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
         logger.info(`HTTPS Server running on https://0.0.0.0:${HTTPS_PORT}`);
     });
-} else {
-    const HTTP_PORT = 80;
+    mainServer = httpsServer;
+
     const httpApp = express();
     httpApp.use((req, res) => {
         const host = req.headers.host.split(':')[0];
-        res.redirect(`https://${host}${req.url}`);
+        res.redirect(`https://${host}:${HTTPS_PORT}${req.url}`);
     });
-    httpServer = http.createServer(httpApp);
+    const httpServer = http.createServer(httpApp);
     httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
         logger.info(`HTTP Server running on http://0.0.0.0:${HTTP_PORT} and redirecting to HTTPS`);
     });
-}
 
-const shutdown = async () => {
-    logger.info('Received kill signal, shutting down gracefully.');
-
-    try {
-        if (process.env.NODE_ENV === 'production') {
+    const shutdown = async () => {
+        logger.info('Received kill signal, shutting down gracefully.');
+    
+        try {
             await new Promise((resolve, reject) => {
                 httpsServer.close((err) => {
                     if (err) {
@@ -149,7 +154,7 @@ const shutdown = async () => {
                     }
                 });
             });
-        } else {
+
             await new Promise((resolve, reject) => {
                 httpServer.close((err) => {
                     if (err) {
@@ -161,28 +166,77 @@ const shutdown = async () => {
                     }
                 });
             });
-        }
 
-        await keydbClient.quit();
-        logger.info('Redis client closed successfully.');
-
-        await new Promise((resolve, reject) => {
-            db.close((err) => {
-                if (err) {
-                    logger.warning('Error closing SQLite database:', { message: err.message, stack: err.stack });
-                    reject(err);
-                } else {
-                    logger.info('SQLite database closed successfully.');
-                    resolve();
-                }
+            await keydbClient.quit();
+            logger.info('Redis client closed successfully.');
+    
+            await new Promise((resolve, reject) => {
+                db.close((err) => {
+                    if (err) {
+                        logger.warning('Error closing SQLite database:', { message: err.message, stack: err.stack });
+                        reject(err);
+                    } else {
+                        logger.info('SQLite database closed successfully.');
+                        resolve();
+                    }
+                });
             });
-        });
-    } catch (err) {
-        logger.warning('Error during shutdown:', { message: err.message, stack: err.stack });
-    } finally {
-        process.exit(0);
-    }
-};
+        } catch (err) {
+            logger.warning('Error during shutdown:', { message: err.message, stack: err.stack });
+        } finally {
+            process.exit(0);
+        }
+    };
 
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+
+} else {
+    const HTTP_PORT = process.env.PORT || 3000;
+
+    const httpServer = http.createServer(app);
+    httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
+        logger.info(`HTTP Server running on http://0.0.0.0:${HTTP_PORT}`);
+    });
+    mainServer = httpServer;
+
+    const shutdown = async () => {
+        logger.info('Received kill signal, shutting down gracefully.');
+    
+        try {
+            await new Promise((resolve, reject) => {
+                httpServer.close((err) => {
+                    if (err) {
+                        logger.warning('Error closing HTTP server:', { message: err.message, stack: err.stack });
+                        reject(err);
+                    } else {
+                        logger.info('HTTP server closed successfully.');
+                        resolve();
+                    }
+                });
+            });
+
+            await keydbClient.quit();
+            logger.info('Redis client closed successfully.');
+    
+            await new Promise((resolve, reject) => {
+                db.close((err) => {
+                    if (err) {
+                        logger.warning('Error closing SQLite database:', { message: err.message, stack: err.stack });
+                        reject(err);
+                    } else {
+                        logger.info('SQLite database closed successfully.');
+                        resolve();
+                    }
+                });
+            });
+        } catch (err) {
+            logger.warning('Error during shutdown:', { message: err.message, stack: err.stack });
+        } finally {
+            process.exit(0);
+        }
+    };
+    
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+}
