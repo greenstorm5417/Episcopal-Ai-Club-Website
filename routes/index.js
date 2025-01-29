@@ -32,8 +32,12 @@ router.post('/login', async (req, res, next) => {
             const thread = await openai.beta.threads.create();
             await createUser(trimmedName, thread.id);
             logger.info(`Created new user: ${trimmedName} with thread ID: ${thread.id}`);
+            threadId = thread.id;
+        } else {
+            threadId = user.thread_id;
         }
         req.session.firstName = trimmedName;
+        req.session.threadId = threadId;
         res.redirect('/chat');
     } catch (err) {
         logger.error(`Login Error for user ${trimmedName}: ${err.message}`);
@@ -61,8 +65,8 @@ const handleStreaming = async (res, threadId, assistantId, userId) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
-    // If you are behind Nginx or another reverse proxy, this header may help
     res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader("x-no-compression", "1");
 
     // (Optional) If using Express 4.17+, you can try to flush headers explicitly:
     if (typeof res.flushHeaders === 'function') {
@@ -74,8 +78,8 @@ const handleStreaming = async (res, threadId, assistantId, userId) => {
 
     // Clean up on client disconnect
     res.on('close', () => {
-        console.log(`Client disconnected for thread ${threadId}`);
-        eventHandler.removeAllListeners();
+        logger.warn(`Client disconnected for thread ${threadId}`);
+        //eventHandler.removeAllListeners();
     });
 
     // Whenever our EventHandler emits a new data chunk, send it right away
@@ -104,7 +108,6 @@ const handleStreaming = async (res, threadId, assistantId, userId) => {
         const stream = openai.beta.threads.runs.stream(threadId, { assistant_id: assistantId });
 
         for await (const event of stream) {
-            logger.info(`Received event for thread ${threadId}:`, event);
             if (res.writableEnded) break;
             await eventHandler.onEvent(event);
         }
@@ -134,16 +137,16 @@ router.post('/assistant/send', isAuthenticated, async (req, res, next) => {
     try {
         const { message } = req.body;
         const userId = req.session.firstName;
-        const user = await getUser(userId);
+        const threadId = req.session.threadId;
 
-        if (!message?.trim() || !user?.thread_id) {
+        if (!message?.trim() || !threadId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
 
-        await openai.beta.threads.messages.create(user.thread_id, { role: "user", content: message });
+        await openai.beta.threads.messages.create(threadId, { role: "user", content: message });
         logger.info(`User ${userId} sent message: ${message}`);
 
-        await handleStreaming(res, user.thread_id, assistant_id_full, userId);
+        await handleStreaming(res, threadId, assistant_id_full, userId);
     } catch (error) {
         logger.error(`Send Message Error for user ${req.session.firstName}: ${error.message}`);
         next(error);
@@ -152,14 +155,13 @@ router.post('/assistant/send', isAuthenticated, async (req, res, next) => {
 
 router.get('/history', isAuthenticated, async (req, res, next) => {
     try {
-        const userId = req.session.firstName;
-        const user = await getUser(userId);
+        const threadId = req.session.threadId;
 
-        if (!user?.thread_id) {
+        if (!threadId) {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const messages = (await openai.beta.threads.messages.list(user.thread_id, { limit: 50 })).data;
+        const messages = (await openai.beta.threads.messages.list(threadId, { limit: 50 })).data;
         messages.reverse();
         res.json({ 
             history: messages.map(m => ({ 
@@ -176,13 +178,13 @@ router.get('/history', isAuthenticated, async (req, res, next) => {
 router.post('/assistant/delete_message', isAuthenticated, async (req, res, next) => {
     try {
         const userId = req.session.firstName;
-        const user = await getUser(userId);
+        const threadId = req.session.threadId;
 
-        if (!user?.thread_id) {
+        if (!threadId) {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const result = await deleteLastMessagePair(user.thread_id);
+        const result = await deleteLastMessagePair(threadId);
 
         if (result.error) {
             logger.warn(`Delete Message Error for user ${userId}: ${result.error}`);
@@ -200,22 +202,22 @@ router.post('/assistant/delete_message', isAuthenticated, async (req, res, next)
 router.post('/assistant/try_again', isAuthenticated, async (req, res, next) => {
     try {
         const userId = req.session.firstName;
-        const user = await getUser(userId);
+        const threadId = req.session.threadId;
 
-        if (!user?.thread_id) {
+        if (!threadId) {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const result = await deleteLastMessagePair(user.thread_id);
+        const result = await deleteLastMessagePair(threadId);
         if (result.error) {
             logger.warn(`Try Again Error for user ${userId}: ${result.error}`);
             return res.status(400).json({ error: result.error });
         }
 
-        await openai.beta.threads.messages.create(user.thread_id, { role: "user", content: result.userContent });
+        await openai.beta.threads.messages.create(threadId, { role: "user", content: result.userContent });
         logger.info(`User ${userId} is trying again with message: ${result.userContent}`);
 
-        await handleStreaming(res, user.thread_id, assistant_id_full, userId);
+        await handleStreaming(res, threadId, assistant_id_full, userId);
     } catch (error) {
         logger.error(`Try Again Error for user ${req.session.firstName}: ${error.message}`);
         next(error);
@@ -226,22 +228,22 @@ router.post('/assistant/edit_message', isAuthenticated, async (req, res, next) =
     try {
         const { new_message } = req.body;
         const userId = req.session.firstName;
-        const user = await getUser(userId);
+        const threadId = req.session.threadId;
 
-        if (!user?.thread_id || !new_message?.trim()) {
+        if (!threadId || !new_message?.trim()) {
             return res.status(400).json({ error: "Invalid request" });
         }
 
-        const result = await deleteLastMessagePair(user.thread_id);
+        const result = await deleteLastMessagePair(threadId);
         if (result.error) {
             logger.warn(`Edit Message Delete Error for user ${userId}: ${result.error}`);
             return res.status(400).json({ error: result.error });
         }
 
-        await openai.beta.threads.messages.create(user.thread_id, { role: "user", content: new_message });
+        await openai.beta.threads.messages.create(threadId, { role: "user", content: new_message });
         logger.info(`User ${userId} edited message to: ${new_message}`);
 
-        await handleStreaming(res, user.thread_id, assistant_id_full, userId);
+        await handleStreaming(res, threadId, assistant_id_full, userId);
     } catch (error) {
         logger.error(`Edit Message Error for user ${req.session.firstName}: ${error.message}`);
         next(error);

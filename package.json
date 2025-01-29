@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "AI Club Website using Node.js, Express, and OpenAI",
   "dependencies": {
+    "@clinic/doctor": "^11.0.0",
     "axios": "^1.7.9",
     "compression": "^1.7.5",
     "connect-redis": "^8.0.1",
@@ -22,6 +23,7 @@
     "ical": "^0.8.0",
     "ioredis": "^5.4.2",
     "morgan": "^1.10.0",
+    "node-datetime": "^2.1.2",
     "openai": "^4.80.1",
     "pm2": "^5.4.3",
     "scrape-it": "^6.1.3",
