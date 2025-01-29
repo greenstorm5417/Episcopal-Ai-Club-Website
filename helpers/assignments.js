@@ -36,7 +36,9 @@ async function extractAssignments(icsUrl, startDate, endDate) {
 
             const assignmentDate = event.start.toISOString().split("T")[0];
             const assignmentDateObj = new Date(assignmentDate);
+            assignmentDateObj.setHours(0, 0, 0, 0);  // Normalize to midnight
 
+            // Modified comparison to be inclusive
             if (assignmentDateObj < startDate || assignmentDateObj > endDate) {
                 continue;
             }
@@ -129,7 +131,12 @@ async function getAssignments(url, startDate = null, endDate = null) {
     }
 
     if (!assignments) {
-        assignments = await extractAssignments(fixedUrl, new Date(0), new Date(8640000000000000));
+        const allStartDate = new Date(0);
+        allStartDate.setHours(0, 0, 0, 0);
+        const allEndDate = new Date(8640000000000000);
+        allEndDate.setHours(23, 59, 59, 999);
+        
+        assignments = await extractAssignments(fixedUrl, allStartDate, allEndDate);
         const cacheData = {
             timestamp: now.toISOString(),
             assignments: assignments
@@ -138,28 +145,36 @@ async function getAssignments(url, startDate = null, endDate = null) {
         logger.info("Fetched and cached new data.");
     }
 
+    // Modified date handling to include current date
     const today = new Date();
+    today.setHours(0, 0, 0, 0);  // Set to midnight for consistent comparison
+    
     const defaultStartDate = new Date(today);
     defaultStartDate.setDate(defaultStartDate.getDate() - 30);
+    defaultStartDate.setHours(0, 0, 0, 0);
+    
     const defaultEndDate = new Date(today);
     defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+    defaultEndDate.setHours(23, 59, 59, 999);  // Set to end of day
 
     let start, end;
 
     if (startDate) {
-        start = (startDate instanceof Date) ? startDate : new Date(startDate);
+        start = (startDate instanceof Date) ? new Date(startDate) : new Date(startDate);
         if (isNaN(start)) {
             throw new Error("Invalid startDate format. Use YYYY-MM-DD or a valid Date object.");
         }
+        start.setHours(0, 0, 0, 0);
     } else {
         start = defaultStartDate;
     }
 
     if (endDate) {
-        end = (endDate instanceof Date) ? endDate : new Date(endDate);
+        end = (endDate instanceof Date) ? new Date(endDate) : new Date(endDate);
         if (isNaN(end)) {
             throw new Error("Invalid endDate format. Use YYYY-MM-DD or a valid Date object.");
         }
+        end.setHours(23, 59, 59, 999);
     } else {
         end = defaultEndDate;
     }
@@ -170,6 +185,7 @@ async function getAssignments(url, startDate = null, endDate = null) {
         const assignmentDate = new Date(date);
         assignmentDate.setHours(0, 0, 0, 0);
 
+        // Modified comparison to be inclusive of start and end dates
         if (assignmentDate >= start && assignmentDate <= end) {
             filteredAssignments[date] = assignments[date];
         }

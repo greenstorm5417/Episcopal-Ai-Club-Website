@@ -32,6 +32,14 @@ function modifyDescription(description) {
     return modified;
 }
 
+function getLocalDateString(dateObj) {
+    const y = dateObj.getFullYear();
+    const m = dateObj.getMonth();
+    const d = dateObj.getDate();
+    const localMidnight = new Date(y, m, d);
+    return localMidnight.toISOString().split("T")[0];
+}
+
 async function extractScheduleFromUrl(icsUrl, startDate, endDate) {
     try {
         logger.info("Fetching ICS file...");
@@ -46,10 +54,11 @@ async function extractScheduleFromUrl(icsUrl, startDate, endDate) {
             const event = parsedData[eventId];
             if (event.type !== "VEVENT") continue;
 
-            const eventDate = event.start.toISOString().split("T")[0];
+            const eventDate = getLocalDateString(event.start);
             const eventDateObj = new Date(eventDate);
             eventDateObj.setHours(0, 0, 0, 0);
 
+            // Modified the comparison to be inclusive of both start and end dates
             if (eventDateObj < startDate || eventDateObj > endDate) {
                 continue;
             }
@@ -137,30 +146,28 @@ async function getSchedule(url, startDate = null, endDate = null) {
         logger.info("Fetched and cached new data.");
     }
 
+    // Modified date handling to include current date
     const today = new Date();
+    today.setHours(0, 0, 0, 0);  // Set to midnight for consistent comparison
+    
     const defaultStartDate = new Date(today);
     defaultStartDate.setDate(defaultStartDate.getDate() - 30);
+    
     const defaultEndDate = new Date(today);
     defaultEndDate.setDate(defaultEndDate.getDate() + 30);
 
-    let start, end;
+    let start = startDate ? new Date(startDate) : defaultStartDate;
+    let end = endDate ? new Date(endDate) : defaultEndDate;
 
-    if (startDate) {
-        start = (startDate instanceof Date) ? startDate : new Date(startDate);
-        if (isNaN(start)) {
-            throw new Error("Invalid startDate format. Use YYYY-MM-DD or a valid Date object.");
-        }
-    } else {
-        start = defaultStartDate;
+    // Ensure dates are set to midnight for consistent comparison
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);  // Set to end of day for inclusive comparison
+
+    if (isNaN(start.getTime())) {
+        throw new Error("Invalid startDate format. Use YYYY-MM-DD or a valid Date object.");
     }
-
-    if (endDate) {
-        end = (endDate instanceof Date) ? endDate : new Date(endDate);
-        if (isNaN(end)) {
-            throw new Error("Invalid endDate format. Use YYYY-MM-DD or a valid Date object.");
-        }
-    } else {
-        end = defaultEndDate;
+    if (isNaN(end.getTime())) {
+        throw new Error("Invalid endDate format. Use YYYY-MM-DD or a valid Date object.");
     }
 
     const filteredSchedule = {};
@@ -169,6 +176,7 @@ async function getSchedule(url, startDate = null, endDate = null) {
         const scheduleDate = new Date(date);
         scheduleDate.setHours(0, 0, 0, 0);
 
+        // Modified comparison to be inclusive
         if (scheduleDate >= start && scheduleDate <= end) {
             filteredSchedule[date] = schedule[date];
         }

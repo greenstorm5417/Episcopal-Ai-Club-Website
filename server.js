@@ -97,7 +97,7 @@ app.get('/', (req, res) => {
     res.redirect(redirectTo);
 });
 
-app.use((err, req, res, next) => { // Added 'next' to correctly define the error-handling middleware
+app.use((err, req, res, next) => {
     logger.error('Unhandled error in Express route:', { message: err.message, stack: err.stack });
     if (process.env.NODE_ENV === 'production') {
         res.status(500).send('Something went wrong! Please try again later.');

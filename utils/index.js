@@ -3,6 +3,7 @@ const OpenAI = require('openai');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const scrapeIt = require('scrape-it');
+const datetime = require('node-datetime');
 
 dotenv.config();
 
@@ -350,30 +351,35 @@ class EventHandler extends EventEmitter {
     }
 
     async handleGetSchedule(toolCall) {
-        const userSettings = await getUser(this.userId);
-        const { class_schedules: schedules, all_assignments: assignments } = userSettings || {};
+      const userSettings = await getUser(this.userId);
+      const { class_schedules: schedules, all_assignments: assignments } = userSettings || {};
+  
+      if (!userSettings || !schedules || !assignments) {
+          return {
+              tool_call_id: toolCall.id,
+              output: JSON.stringify({
+                  error: 'User settings not found or ICS URL missing. Recommend that the user investigates the settings icon next to the logout button',
+              }),
+          };
+      }
+  
+      const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+      const in30Days = getFutureDateExcludingWeekends(today, 30); // Ensure this function correctly excludes weekendss
+      const userAssignments = await getAssignments(assignments, today, in30Days);
+      const userSchedule = await getSchedule(schedules, today, in30Days);
+      const currentDate = today.toLocaleDateString();
+  
+      // Format the schedule and assignments
+      const formattedOutput = formatSchedule({
+          schedule: userSchedule,
+          assignments: userAssignments,
+      });
 
-        if (!userSettings || !schedules || !assignments) {
-            return {
-                tool_call_id: toolCall.id,
-                output: JSON.stringify({
-                    error: 'User settings not found or ICS URL missing. Recommend that the user investigates the settings icon next to the logout button',
-                }),
-            };
-        }
-
-        const today = new Date();
-        const in30Days = getFutureDateExcludingWeekends(today, 30);
-        const userAssignments = await getAssignments(assignments, today, in30Days);
-        const userSchedule = await getSchedule(schedules, today, in30Days);
-        const currentDate = today.toLocaleDateString();
-
-        const output = `The current date is ${currentDate}. Here is the schedule and assignments: ${JSON.stringify({
-            assignments: userAssignments,
-            schedule: userSchedule,
-        })}`;
-        return { tool_call_id: toolCall.id, output };
-    }
+      console.log(formattedOutput);
+  
+      return { tool_call_id: toolCall.id, output: formattedOutput };
+  }
+  
 
     async handleSearchWeb(toolCall, args) {
         try {
@@ -410,16 +416,114 @@ class EventHandler extends EventEmitter {
     }
 }
 
-function getFutureDateExcludingWeekends(startDate, weekdaysToAdd) {
-    const date = new Date(startDate);
-    let addedDays = 0;
-    while (addedDays < weekdaysToAdd) {
-        date.setDate(date.getDate() + 1);
-        const day = date.getDay();
-        if (day !== 0 && day !== 6) addedDays++;
-    }
-    return date;
+function getDayOfWeek(dateStr) {
+  const dateObj = new Date(dateStr);
+  return dateObj.toLocaleDateString("en-US", {
+    weekday: "long",
+    timeZone: "America/New_York"
+  });
 }
+
+
+function getFutureDateExcludingWeekends(startDate, daysAhead) {
+  const currentDate = new Date(startDate);
+  currentDate.setHours(0, 0, 0, 0); 
+  let daysFound = 0;
+  
+  while (daysFound < daysAhead) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      const day = currentDate.getDay();
+      if (day !== 0 && day !== 6) { 
+          daysFound++;
+      }
+  }
+  currentDate.setHours(23, 59, 59, 999);
+  return currentDate;
+}
+
+function formatSchedule({ schedule, assignments }) {
+  // If both schedule and assignments are empty, just return.
+  if ((!schedule || Object.keys(schedule).length === 0) &&
+      (!assignments || Object.keys(assignments).length === 0)) {
+      return "No schedule available.";
+  }
+
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const currentDate = now.toLocaleDateString('en-US');
+  // e.g. "1/28/2025"
+  const currentDayOfWeek = now.toLocaleDateString('en-US', {
+      weekday: 'long',
+      timeZone: 'America/New_York'
+  });
+
+  let scheduleStr = "📅 **Your School Schedule for the Next 30 Weekdays:**\n\n";
+  scheduleStr += "*Assume days with no schedule are holidays; there is no school on weekends.*\n\n";
+  scheduleStr += `**Current Date:** ${currentDate}\n`;
+  scheduleStr += `**Current Time:** ${currentTime}\n`;
+  scheduleStr += `**Today (${currentDayOfWeek}):**\n\n`;
+
+  // ---- Format the SCHEDULE DATES ----
+  if (schedule && Object.keys(schedule).length > 0) {
+      for (const [date, details] of Object.entries(schedule)) {
+          // Convert "2025-01-28" into something friendlier
+          const dateObj = new Date(date);
+          // e.g. "January 28, 2025"
+          const formattedDate = dateObj.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric"
+          });
+          // e.g. "Tuesday"
+          const weekday = dateObj.toLocaleDateString("en-US", {
+              weekday: "long",
+              timeZone: "America/New_York"
+          });
+
+          scheduleStr += `**Date:** ${formattedDate} (${weekday})\n`;
+
+          for (const entry of details) {
+              const { start_time, end_time, summary, location, description } = entry;
+              scheduleStr += `- **${start_time} - ${end_time}**: **${summary.trim()}**\n`;
+              scheduleStr += `  Location: ${location}\n`;
+              scheduleStr += `  Description: ${description.trim()}\n`;
+          }
+          scheduleStr += "\n";
+      }
+  }
+
+  // ---- Format the ASSIGNMENT DATES ----
+  if (assignments && Object.keys(assignments).length > 0) {
+      scheduleStr += "📝 **Upcoming Assignments:**\n\n";
+
+      for (const [date, assignmentList] of Object.entries(assignments)) {
+          // Convert "2025-01-28" into something friendlier
+          const dateObj = new Date(date);
+          const formattedDate = dateObj.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric"
+          });
+          const weekday = dateObj.toLocaleDateString("en-US", {
+              weekday: "long",
+              timeZone: "America/New_York"
+          });
+
+          scheduleStr += `**Date:** ${formattedDate} (${weekday})\n`;
+
+          for (const assignment of assignmentList) {
+              const { summary, description, start_time } = assignment;
+              scheduleStr += `- **Time:** ${start_time}\n`;
+              scheduleStr += `  **Assignment:** ${summary.trim()}\n`;
+              scheduleStr += `  **Description:** ${description.trim()}\n`;
+          }
+          scheduleStr += "\n";
+      }
+  }
+
+  return scheduleStr;
+}
+
 
 async function deleteLastMessagePair(threadId) {
     try {
