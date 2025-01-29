@@ -41,7 +41,7 @@ router.post('/login', async (req, res, next) => {
     }
 });
 
-router.get('/logout', (req, res, next) => {
+router.get('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
             logger.error(`Logout Error: ${err.message}`);
@@ -211,7 +211,7 @@ router.post('/assistant/edit_message', isAuthenticated, async (req, res, next) =
     }
 });
 
-router.post('/assistant/stop_response', isAuthenticated, (req, res, next) => {
+router.post('/assistant/stop_response', isAuthenticated, (req, res) => {
     const { assistant_id, thread_id } = req.body;
 
     if (!assistant_id || !thread_id) {

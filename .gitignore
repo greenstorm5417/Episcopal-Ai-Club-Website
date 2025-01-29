@@ -4,6 +4,7 @@ database/database.sqlite
 helpers/cache/*
 ecosystem.config.js
 run_keydb.bat
+package-lock.json
 
 # Logs
 logs

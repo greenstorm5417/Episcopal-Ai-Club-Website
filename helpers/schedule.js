@@ -77,7 +77,10 @@ async function extractScheduleFromUrl(icsUrl, startDate, endDate) {
         }
 
         for (const date in schedule) {
-            schedule[date] = schedule[date].map(({ raw_start, ...eventDetails }) => eventDetails);
+            schedule[date] = schedule[date].map(eventDetails => {
+                delete eventDetails.raw_start;
+                return eventDetails;
+            });
         }
 
         return schedule;

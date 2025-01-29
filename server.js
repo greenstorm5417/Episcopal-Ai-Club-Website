@@ -97,7 +97,7 @@ app.get('/', (req, res) => {
     res.redirect(redirectTo);
 });
 
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
     logger.error('Unhandled error in Express route:', { message: err.message, stack: err.stack });
     if (process.env.NODE_ENV === 'production') {
         res.status(500).send('Something went wrong! Please try again later.');
@@ -106,6 +106,9 @@ app.use((err, req, res, next) => {
     }
 });
 
+let httpsServer;
+let httpServer;
+
 if (process.env.NODE_ENV === 'production') {
     const HTTPS_PORT = 443;
     const certPath = 'C:/Certbot/live/greenstorm.site/';
@@ -113,18 +116,18 @@ if (process.env.NODE_ENV === 'production') {
         key: fs.readFileSync(path.join(certPath, 'privkey.pem')),
         cert: fs.readFileSync(path.join(certPath, 'fullchain.pem')),
     };
-    const httpsServer = https.createServer(sslOptions, app);
+    httpsServer = https.createServer(sslOptions, app);
     httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
         logger.info(`HTTPS Server running on https://0.0.0.0:${HTTPS_PORT}`);
     });
 } else {
     const HTTP_PORT = 80;
     const httpApp = express();
-    httpApp.use((req, res, next) => {
+    httpApp.use((req, res) => {
         const host = req.headers.host.split(':')[0];
         res.redirect(`https://${host}${req.url}`);
     });
-    const httpServer = http.createServer(httpApp);
+    httpServer = http.createServer(httpApp);
     httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
         logger.info(`HTTP Server running on http://0.0.0.0:${HTTP_PORT} and redirecting to HTTPS`);
     });

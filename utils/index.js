@@ -295,12 +295,14 @@ class EventHandler extends EventEmitter {
                     await this.handleRequiresAction(event.data, event.data.id, event.data.thread_id);
                     break;
                 case 'thread.message.delta':
-                    const text = event.data.delta.content[0]?.text?.value;
-                    if (text) {
-                        this.buffer.addMessage(text);
-                        let chunk;
-                        while ((chunk = this.buffer.getMessage()) !== null) {
-                            this.emit('data', chunk);
+                    {
+                        const text = event.data.delta.content[0]?.text?.value;
+                        if (text) {
+                            this.buffer.addMessage(text);
+                            let chunk;
+                            while ((chunk = this.buffer.getMessage()) !== null) {
+                                this.emit('data', chunk);
+                            }
                         }
                     }
                     break;
