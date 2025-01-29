@@ -364,18 +364,18 @@ class EventHandler extends EventEmitter {
       }
   
       const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
-      const in30Days = getFutureDateExcludingWeekends(today, 30); // Ensure this function correctly excludes weekendss
+      today.setHours(0, 0, 0, 0);
+      const in30Days = getFutureDateExcludingWeekends(today, 30);
+
+
       const userAssignments = await getAssignments(assignments, today, in30Days);
       const userSchedule = await getSchedule(schedules, today, in30Days);
-      const currentDate = today.toLocaleDateString();
   
       // Format the schedule and assignments
       const formattedOutput = formatSchedule({
           schedule: userSchedule,
           assignments: userAssignments,
       });
-
-      console.log(formattedOutput);
   
       return { tool_call_id: toolCall.id, output: formattedOutput };
   }
@@ -387,9 +387,10 @@ class EventHandler extends EventEmitter {
             const results = await searchWeb(searchTerm);
             logger.info('Search term: %s', searchTerm);
             return { tool_call_id: toolCall.id, output: results || JSON.stringify({ error: 'No results found.' }) };
-        } catch {
-            return { tool_call_id: toolCall.id, output: JSON.stringify({ error: 'Search failed.' }) };
-        }
+        } catch (error) {
+          logger.error('Search failed:', error);
+          return { tool_call_id: toolCall.id, output: JSON.stringify({ error: 'Search failed.' }) };
+      }
     }
 
     async handleScrapeWeb(toolCall, args) {
@@ -449,13 +450,10 @@ function formatSchedule({ schedule, assignments }) {
   }
 
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  const currentDate = now.toLocaleDateString('en-US');
-  // e.g. "1/28/2025"
-  const currentDayOfWeek = now.toLocaleDateString('en-US', {
-      weekday: 'long',
-      timeZone: 'America/New_York'
-  });
+  const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: "America/New_York" });
+  const currentDate = now.toLocaleDateString('en-US', { timeZone: "America/New_York" });
+  const currentDayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/New_York' });
+
 
   let scheduleStr = "📅 **Your School Schedule for the Next 30 Weekdays:**\n\n";
   scheduleStr += "*Assume days with no schedule are holidays; there is no school on weekends.*\n\n";

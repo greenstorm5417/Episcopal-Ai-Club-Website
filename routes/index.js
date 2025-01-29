@@ -62,34 +62,52 @@ const handleStreaming = async (res, threadId, assistantId, userId) => {
     res.setHeader("Connection", "keep-alive");
 
     const eventHandler = new EventHandler(userId);
+    let hasError = false;
 
-    eventHandler.on("data", text => res.write(`data: ${JSON.stringify({ text })}\n\n`));
+    res.on('close', () => {
+        logger.info(`Client disconnected for thread ${threadId}`);
+        eventHandler.removeAllListeners();
+    });
+
+    eventHandler.on("data", text => {
+        if (!res.writableEnded) {
+            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        }
+    });
 
     eventHandler.on("error", error => {
-        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-        res.end();
+        if (!res.writableEnded) {
+            hasError = true;
+            logger.error(`Streaming error for thread ${threadId}:`, error);
+            res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+            res.end();
+        }
     });
 
     try {
         const stream = openai.beta.threads.runs.stream(threadId, { assistant_id: assistantId });
 
         for await (const event of stream) {
+            if (res.writableEnded) break;
             await eventHandler.onEvent(event);
         }
 
-        eventHandler.buffer.flush();
-        let chunk;
-        while ((chunk = eventHandler.buffer.getMessage()) !== null) {
-            eventHandler.emit('data', chunk);
+        if (!hasError && !res.writableEnded) {
+            eventHandler.buffer.flush();
+            let chunk;
+            while ((chunk = eventHandler.buffer.getMessage()) !== null) {
+                eventHandler.emit('data', chunk);
+            }
+            res.end();
         }
-
-        res.end();
-
-        res.end();
     } catch (error) {
-        logger.error(`Streaming Error for thread ${threadId}: ${error.message}`);
-        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-        res.end();
+        if (!res.writableEnded) {
+            logger.error(`Streaming Error for thread ${threadId}:`, error);
+            res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+            res.end();
+        }
+    } finally {
+        eventHandler.removeAllListeners();
     }
 };
 
@@ -269,7 +287,7 @@ router.get('/robots.txt', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'robots.txt'));
 });
 
-router.get('sitemap.xml', (req, res) => {
+router.get('/sitemap.xml', (req, res) => {
     res.type('application/xml');
     res.sendFile(path.join(__dirname, '..', 'public', 'sitemap.xml'));
 });
