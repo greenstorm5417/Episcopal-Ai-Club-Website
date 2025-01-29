@@ -57,41 +57,59 @@ router.get('/chat', isAuthenticated, (req, res) =>
 );
 
 const handleStreaming = async (res, threadId, assistantId, userId) => {
+    // Set up headers for SSE + prevent buffering
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
+    // If you are behind Nginx or another reverse proxy, this header may help
+    res.setHeader("X-Accel-Buffering", "no");
+
+    // (Optional) If using Express 4.17+, you can try to flush headers explicitly:
+    if (typeof res.flushHeaders === 'function') {
+        res.flushHeaders();
+    }
 
     const eventHandler = new EventHandler(userId);
     let hasError = false;
 
+    // Clean up on client disconnect
     res.on('close', () => {
-        logger.info(`Client disconnected for thread ${threadId}`);
+        console.log(`Client disconnected for thread ${threadId}`);
         eventHandler.removeAllListeners();
     });
 
+    // Whenever our EventHandler emits a new data chunk, send it right away
     eventHandler.on("data", text => {
         if (!res.writableEnded) {
             res.write(`data: ${JSON.stringify({ text })}\n\n`);
+
+            // Force-flush the response (requires `res.flush()` support or no compression)
+            if (typeof res.flush === 'function') {
+                res.flush();
+            }
         }
     });
 
     eventHandler.on("error", error => {
         if (!res.writableEnded) {
             hasError = true;
-            logger.error(`Streaming error for thread ${threadId}:`, error);
+            console.error(`Streaming error for thread ${threadId}:`, error);
             res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
             res.end();
         }
     });
 
     try {
+        // Start reading the streaming events from OpenAI or your source
         const stream = openai.beta.threads.runs.stream(threadId, { assistant_id: assistantId });
 
         for await (const event of stream) {
+            logger.info(`Received event for thread ${threadId}:`, event);
             if (res.writableEnded) break;
             await eventHandler.onEvent(event);
         }
 
+        // Once stream is over, flush any leftover buffer content
         if (!hasError && !res.writableEnded) {
             eventHandler.buffer.flush();
             let chunk;
@@ -102,7 +120,7 @@ const handleStreaming = async (res, threadId, assistantId, userId) => {
         }
     } catch (error) {
         if (!res.writableEnded) {
-            logger.error(`Streaming Error for thread ${threadId}:`, error);
+            console.error(`Streaming Error for thread ${threadId}:`, error);
             res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
             res.end();
         }
@@ -110,6 +128,7 @@ const handleStreaming = async (res, threadId, assistantId, userId) => {
         eventHandler.removeAllListeners();
     }
 };
+
 
 router.post('/assistant/send', isAuthenticated, async (req, res, next) => {
     try {
